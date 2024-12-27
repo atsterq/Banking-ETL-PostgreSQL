@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+env/
+venv/
+*.ipynb_checkpoints
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.db
+
+# PostgreSQL
+*.sql
+*.pgsql
+
+# Docker
+**/Dockerfile*
+**/docker-compose.yml
+
+# Apache Airflow
+airflow.cfg
+airflow.db
+logs/
+dags/*.pyc
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# DBeaver
+.dbeaver/
+
+# Talend (optional)
+.talend/
+
+# VirtualBox (optional)
+.vbox/
+.vbox-extpack
+
+# Spark / PySpark (optional)
+*.pyc
+
+# Ignore task_files folder
+task_files/
