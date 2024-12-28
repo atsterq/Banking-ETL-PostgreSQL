@@ -97,7 +97,7 @@ def run_etl():
 
     except Exception as e:
         # В случае ошибки логируем ошибку
-        log_end(log_id, start_time, 0)
+        end_log(log_id, start_time, 0)
         print(f"Error: {e}")
 
 

@@ -20,8 +20,8 @@ venv/
 *.db
 
 # PostgreSQL
-*.sql
-*.pgsql
+# *.sql
+# *.pgsql
 
 # Docker
 **/Dockerfile*
