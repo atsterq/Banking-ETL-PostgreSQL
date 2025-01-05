@@ -205,7 +205,7 @@ def load_md_account_d(csv_file, log_id):
                 char_type = EXCLUDED.char_type,
                 currency_rk = EXCLUDED.currency_rk,
                 currency_code = EXCLUDED.currency_code;
-        """
+            """
 
         for index, row in df.iterrows():
             cur.execute(
@@ -236,6 +236,66 @@ def load_md_account_d(csv_file, log_id):
         raise e
 
 
+def load_md_currency_d(csv_file, log_id):
+    try:
+        # меняем кодировку на ISO-8859-1, поскольку стандартная utf-8 вызывала ошибку
+        df = pd.read_csv(csv_file, delimiter=";", encoding="ISO-8859-1")
+
+        df["DATA_ACTUAL_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
+        )
+        df["DATA_ACTUAL_END_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
+        )
+
+        df = df.dropna(subset=["DATA_ACTUAL_DATE", "CURRENCY_RK"])
+
+        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
+
+        # ПЕРЕДЕЛАТЬ. ПРЕОБРАЗОВАНИЕ МЕНЯЕТ КОД 051 НА 51.
+        df["CURRENCY_CODE"] = df["CURRENCY_CODE"].astype(str)
+        df["CODE_ISO_CHAR"] = df["CODE_ISO_CHAR"].astype(str)
+
+        # обрежем до 3 символов, как этого требует ограничение таблицы
+        df["CURRENCY_CODE"] = df["CURRENCY_CODE"].str[:3]
+        df["CODE_ISO_CHAR"] = df["CODE_ISO_CHAR"].str[:3]
+
+        insert_query = """
+            INSERT INTO ds.md_currency_d (currency_rk, data_actual_date,
+            data_actual_end_date, currency_code, code_iso_char)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (currency_rk, data_actual_date) DO UPDATE
+            SET currency_code = EXCLUDED.currency_code,
+                code_iso_char = EXCLUDED.code_iso_char;
+            """
+
+        for index, row in df.iterrows():
+            cur.execute(
+                insert_query,
+                (
+                    row["CURRENCY_RK"],
+                    row["DATA_ACTUAL_DATE"],
+                    row["DATA_ACTUAL_END_DATE"],
+                    row["CURRENCY_CODE"],
+                    row["CODE_ISO_CHAR"],
+                ),
+            )
+
+        conn.commit()
+        df_len = len(df)
+        print(f"Загружено {df_len} записей в таблицу ds.md_currency_d.")
+        return df_len
+
+    except Exception as e:
+        conn.rollback()
+        end_log(
+            log_id,
+            0,
+            f"Ошибка загрузки таблицы md_currency_d: {str(e)}",
+        )
+        raise e
+
+
 def run_etl():
     try:
         # логируем начало etl процесса
@@ -244,15 +304,24 @@ def run_etl():
         records_count = 0
 
         # выполнение функций и подсчет кол-ва записей
-        records_count += load_ft_balance_f(
-            f"{files_path}ft_balance_f.csv", log_id
-        )
+        # records_count += load_ft_balance_f(
+        #     f"{files_path}ft_balance_f.csv", log_id
+        # )
         # records_count += load_ft_posting_f(
         #     f"{files_path}ft_posting_f.csv", log_id
         # )
-        records_count += load_md_account_d(
-            f"{files_path}md_account_d.csv", log_id
+        # records_count += load_md_account_d(
+        #     f"{files_path}md_account_d.csv", log_id
+        # )
+        records_count += load_md_currency_d(
+            f"{files_path}md_currency_d.csv", log_id
         )
+        # records_count += load_ft_balance_f(
+        #     f"{files_path}ft_balance_f.csv", log_id
+        # )
+        # records_count += load_ft_balance_f(
+        #     f"{files_path}ft_balance_f.csv", log_id
+        # )
 
         end_log(log_id, records_count)
 
