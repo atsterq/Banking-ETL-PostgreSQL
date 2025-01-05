@@ -1,5 +1,6 @@
 # Showcase
-https://disk.yandex.ru/d/pLCTm5upGyvuGA
+На данный момент ничего не готово.  
+Ссылка на видеопоказ: https://disk.yandex.ru/d/pLCTm5upGyvuGA
 # Description
 ETL-процесс для загрузки банковских данных из CSV-файлов в PostgreSQL
 # Technology
