@@ -31,7 +31,7 @@ def start_log():
     conn.commit()
     log_id = cur.fetchone()[0]  # берем первый элемент курсора (log_id)
 
-    time.sleep(5)
+    time.sleep(5)  # ждем 5 сек по условиям задачи
 
     return log_id
 
@@ -53,6 +53,7 @@ def end_log(log_id, records_count, error_message=None):
             (end_time, records_count, status, error_message, log_id),
         )
         conn.commit()
+
     except Exception as e:
         # ошибка в логировании
         conn.rollback()
@@ -77,17 +78,18 @@ def load_ft_balance_f(csv_file, log_id):
         # проверить наличие пропусков в обязательных столбцах
         df = df.dropna(subset=["ON_DATE", "ACCOUNT_RK", "BALANCE_OUT"])
 
-        # Преобразуем типы данных
+        # преобразуем типы данных
         df["ON_DATE"] = pd.to_datetime(df["ON_DATE"], format="%d.%m.%Y")
         df["ACCOUNT_RK"] = df["ACCOUNT_RK"].astype(int)
         df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
         df["BALANCE_OUT"] = df["BALANCE_OUT"].astype(float)
 
-        # sql
+        # sql, для корректного обновления данных при вставке в уникальные
+        # строки обновляем данные (excluded)
         insert_query = """
             INSERT INTO ds.ft_balance_f (on_date, account_rk, currency_rk, balance_out)
             VALUES (%s, %s, %s, %s)
-            ON CONFLICT (on_date, account_rk) DO UPDATE 
+            ON CONFLICT (on_date, account_rk) DO UPDATE
             SET balance_out = EXCLUDED.balance_out;
             """
 
@@ -117,6 +119,65 @@ def load_ft_balance_f(csv_file, log_id):
         raise e
 
 
+def load_ft_posting_f(csv_file, log_id):
+    # функция загрузки таблицы ft_posting_f
+    try:
+        # очищаем таблицу
+        cur.execute("TRUNCATE TABLE ds.ft_posting_f;")
+        conn.commit()
+
+        df = pd.read_csv(csv_file, delimiter=";")
+
+        df["OPER_DATE"] = pd.to_datetime(df["OPER_DATE"], format="%d-%m-%Y")
+
+        df = df.dropna(
+            subset=[
+                "OPER_DATE",
+                "CREDIT_ACCOUNT_RK",
+                "DEBET_ACCOUNT_RK",
+                "CREDIT_AMOUNT",
+                "DEBET_AMOUNT",
+            ]
+        )
+
+        df["CREDIT_ACCOUNT_RK"] = df["CREDIT_ACCOUNT_RK"].astype(int)
+        df["DEBET_ACCOUNT_RK"] = df["DEBET_ACCOUNT_RK"].astype(int)
+        df["CREDIT_AMOUNT"] = df["CREDIT_AMOUNT"].astype(float)
+        df["DEBET_AMOUNT"] = df["DEBET_AMOUNT"].astype(float)
+
+        insert_query = """
+            INSERT INTO ds.ft_posting_f (oper_date, credit_account_rk, 
+                debet_account_rk, credit_amount, debet_amount)
+            VALUES (%s, %s, %s, %s, %s);
+            """
+
+        for index, row in df.iterrows():
+            cur.execute(
+                insert_query,
+                (
+                    row["OPER_DATE"],
+                    row["CREDIT_ACCOUNT_RK"],
+                    row["DEBET_ACCOUNT_RK"],
+                    row["CREDIT_AMOUNT"],
+                    row["DEBET_AMOUNT"],
+                ),
+            )
+
+        conn.commit()
+        df_len = len(df)
+        print(f"Загружено {df_len} записей в таблицу ds.ft_posting_f.")
+        return df_len
+
+    except Exception as e:
+        conn.rollback()
+        end_log(
+            log_id,
+            0,
+            f"Ошибка загрузки таблицы ft_posting_f: {str(e)}",
+        )
+        raise e
+
+
 def run_etl():
     try:
         # логируем начало etl процесса
@@ -124,11 +185,14 @@ def run_etl():
 
         records_count = 0
 
-        records_count += (
-            load_ft_balance_f(  # выполнение функции и подсчет кол-ва записей
-                f"{files_path}ft_balance_f.csv", log_id
-            )
+        # выполнение функции и подсчет кол-ва записей
+        records_count += load_ft_balance_f(
+            f"{files_path}ft_balance_f.csv", log_id
         )
+        records_count += load_ft_posting_f(
+            f"{files_path}ft_posting_f.csv", log_id
+        )
+
         end_log(log_id, records_count)
 
     except Exception as e:
