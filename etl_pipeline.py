@@ -178,6 +178,64 @@ def load_ft_posting_f(csv_file, log_id):
         raise e
 
 
+def load_md_account_d(csv_file, log_id):
+    try:
+        df = pd.read_csv(csv_file, delimiter=";")
+
+        df["DATA_ACTUAL_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
+        )
+        df["DATA_ACTUAL_END_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
+        )
+
+        df = df.dropna(
+            subset=["DATA_ACTUAL_DATE", "ACCOUNT_RK", "CURRENCY_RK"]
+        )
+
+        df["ACCOUNT_RK"] = df["ACCOUNT_RK"].astype(int)
+        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
+
+        insert_query = """
+            INSERT INTO ds.md_account_d (data_actual_date, 
+            data_actual_end_date, account_rk, account_number, char_type, currency_rk, currency_code)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (data_actual_date, account_rk) DO UPDATE 
+            SET account_number = EXCLUDED.account_number,
+                char_type = EXCLUDED.char_type,
+                currency_rk = EXCLUDED.currency_rk,
+                currency_code = EXCLUDED.currency_code;
+        """
+
+        for index, row in df.iterrows():
+            cur.execute(
+                insert_query,
+                (
+                    row["DATA_ACTUAL_DATE"],
+                    row["DATA_ACTUAL_END_DATE"],
+                    row["ACCOUNT_RK"],
+                    row["ACCOUNT_NUMBER"],
+                    row["CHAR_TYPE"],
+                    row["CURRENCY_RK"],
+                    row["CURRENCY_CODE"],
+                ),
+            )
+
+        conn.commit()
+        df_len = len(df)
+        print(f"Загружено {df_len} записей в таблицу ds.md_account_d.")
+        return df_len
+
+    except Exception as e:
+        conn.rollback()
+        end_log(
+            log_id,
+            0,
+            f"Ошибка загрузки таблицы md_account_d: {str(e)}",
+        )
+        raise e
+
+
 def run_etl():
     try:
         # логируем начало etl процесса
@@ -185,12 +243,15 @@ def run_etl():
 
         records_count = 0
 
-        # выполнение функции и подсчет кол-ва записей
+        # выполнение функций и подсчет кол-ва записей
         records_count += load_ft_balance_f(
             f"{files_path}ft_balance_f.csv", log_id
         )
-        records_count += load_ft_posting_f(
-            f"{files_path}ft_posting_f.csv", log_id
+        # records_count += load_ft_posting_f(
+        #     f"{files_path}ft_posting_f.csv", log_id
+        # )
+        records_count += load_md_account_d(
+            f"{files_path}md_account_d.csv", log_id
         )
 
         end_log(log_id, records_count)
@@ -201,6 +262,8 @@ def run_etl():
 
 
 if __name__ == "__main__":
+    # запускаем etl
     run_etl()
+    # закрываем подключение и курсор
     cur.close()
     conn.close()
