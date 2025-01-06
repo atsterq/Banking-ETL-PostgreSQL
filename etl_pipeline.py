@@ -75,9 +75,6 @@ def load_ft_balance_f(csv_file, log_id):
     try:
         df = pd.read_csv(csv_file, delimiter=";")
 
-        # проверить наличие пропусков в обязательных столбцах
-        # df = df.dropna(subset=["ON_DATE", "ACCOUNT_RK", "BALANCE_OUT"])
-
         # преобразуем дату
         df["ON_DATE"] = pd.to_datetime(df["ON_DATE"], format="%d.%m.%Y")
 
@@ -221,9 +218,6 @@ def load_md_currency_d(csv_file, log_id):
             encoding_errors="ignore",
         )
 
-        # наличие пропусков
-        df = df.dropna(subset=["DATA_ACTUAL_DATE", "CURRENCY_RK"])
-
         df["DATA_ACTUAL_DATE"] = pd.to_datetime(
             df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
         )
@@ -334,7 +328,6 @@ def load_md_ledger_account_s(csv_file, log_id):
         df["END_DATE"] = pd.to_datetime(
             df["END_DATE"], format="%Y-%m-%d", errors="coerce"
         )
-
 
         insert_query = """
             INSERT INTO ds.md_ledger_account_s (chapter, chapter_name,
