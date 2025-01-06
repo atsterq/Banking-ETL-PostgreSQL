@@ -238,8 +238,19 @@ def load_md_account_d(csv_file, log_id):
 
 def load_md_currency_d(csv_file, log_id):
     try:
-        # меняем кодировку на ISO-8859-1, поскольку стандартная utf-8 вызывала ошибку
-        df = pd.read_csv(csv_file, delimiter=";", encoding="ISO-8859-1")
+        # меняем кодировку, поскольку стандартная utf-8 вызывала ошибку
+        df = pd.read_csv(
+            csv_file,
+            delimiter=";",
+            dtype={
+                "CURRENCY_CODE": str
+            },  # сразу приводим к строке, иначе будет float
+            encoding="cp1252",
+            encoding_errors="ignore",
+        )
+
+        # наличие пропусков
+        df = df.dropna(subset=["DATA_ACTUAL_DATE", "CURRENCY_RK"])
 
         df["DATA_ACTUAL_DATE"] = pd.to_datetime(
             df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
@@ -248,13 +259,7 @@ def load_md_currency_d(csv_file, log_id):
             df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
         )
 
-        df = df.dropna(subset=["DATA_ACTUAL_DATE", "CURRENCY_RK"])
-
         df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
-
-        # ПЕРЕДЕЛАТЬ. ПРЕОБРАЗОВАНИЕ МЕНЯЕТ КОД 051 НА 51.
-        df["CURRENCY_CODE"] = df["CURRENCY_CODE"].astype(str)
-        df["CODE_ISO_CHAR"] = df["CODE_ISO_CHAR"].astype(str)
 
         # обрежем до 3 символов, как этого требует ограничение таблицы
         df["CURRENCY_CODE"] = df["CURRENCY_CODE"].str[:3]
@@ -296,33 +301,161 @@ def load_md_currency_d(csv_file, log_id):
         raise e
 
 
+def load_md_exchange_rate_d(csv_file, log_id):
+    try:
+        df = pd.read_csv(csv_file, delimiter=";")
+
+        df["DATA_ACTUAL_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
+        )
+        df["DATA_ACTUAL_END_DATE"] = pd.to_datetime(
+            df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
+        )
+
+        df = df.dropna(
+            subset=["DATA_ACTUAL_DATE", "CURRENCY_RK", "REDUCED_COURCE"]
+        )
+
+        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
+
+        df["REDUCED_COURCE"] = df["REDUCED_COURCE"].astype(float)
+
+        df["CODE_ISO_NUM"] = df["CODE_ISO_NUM"].astype(str).str.zfill(3)
+
+        df["CODE_ISO_NUM"] = df["CODE_ISO_NUM"].str[:3]
+
+        insert_query = """
+            INSERT INTO ds.md_exchange_rate_d (data_actual_date, 
+                data_actual_end_date, currency_rk, reduced_cource, code_iso_num)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (currency_rk, data_actual_date) DO UPDATE 
+            SET reduced_cource = EXCLUDED.reduced_cource,
+                code_iso_num = EXCLUDED.code_iso_num;
+        """
+
+        for index, row in df.iterrows():
+            cur.execute(
+                insert_query,
+                (
+                    row["DATA_ACTUAL_DATE"],
+                    row["DATA_ACTUAL_END_DATE"],
+                    row["CURRENCY_RK"],
+                    row["REDUCED_COURCE"],
+                    row["CODE_ISO_NUM"],
+                ),
+            )
+
+        conn.commit()
+        df_len = len(df)
+        print(f"Загружено {df_len} записей в таблицу ds.md_exchange_rate_d.")
+        return df_len
+
+    except Exception as e:
+        conn.rollback()
+        end_log(
+            log_id,
+            0,
+            f"Ошибка загрузки таблицы md_exchange_rate_d: {str(e)}",
+        )
+        raise e
+
+
+def load_md_ledger_account_s(csv_file, log_id):
+    # в исходных данных есть следующие колонки (12):
+    # CHAPTER;CHAPTER_NAME;SECTION_NUMBER;SECTION_NAME;SUBSECTION_NAME;LEDGER1_ACCOUNT;
+    # LEDGER1_ACCOUNT_NAME;LEDGER_ACCOUNT;LEDGER_ACCOUNT_NAME;CHARACTERISTIC;START_DATE;END_DATE
+
+    try:
+        df = pd.read_csv(csv_file, delimiter=";")
+
+        df["START_DATE"] = pd.to_datetime(df["START_DATE"], format="%Y-%m-%d")
+        df["END_DATE"] = pd.to_datetime(
+            df["END_DATE"], format="%Y-%m-%d", errors="coerce"
+        )
+
+        df = df.dropna(subset=["START_DATE", "LEDGER_ACCOUNT"])
+
+        insert_query = """
+            INSERT INTO ds.md_ledger_account_s (chapter, chapter_name,
+                section_number, section_name, subsection_name,
+            ledger1_account, ledger1_account_name, ledger_account,
+                ledger_account_name, characteristic, start_date, end_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (ledger_account, start_date) DO UPDATE
+            SET chapter = EXCLUDED.chapter,
+                chapter_name = EXCLUDED.chapter_name,
+                section_number = EXCLUDED.section_number,
+                section_name = EXCLUDED.section_name,
+                subsection_name = EXCLUDED.subsection_name,
+                ledger1_account = EXCLUDED.ledger1_account,
+                ledger1_account_name = EXCLUDED.ledger1_account_name,
+                ledger_account_name = EXCLUDED.ledger_account_name,
+                characteristic = EXCLUDED.characteristic,
+                end_date = EXCLUDED.end_date
+            """
+
+        for index, row in df.iterrows():
+            cur.execute(
+                insert_query,
+                (
+                    row["CHAPTER"],
+                    row["CHAPTER_NAME"],
+                    row["SECTION_NUMBER"],
+                    row["SECTION_NAME"],
+                    row["SUBSECTION_NAME"],
+                    row["LEDGER1_ACCOUNT"],
+                    row["LEDGER1_ACCOUNT_NAME"],
+                    row["LEDGER_ACCOUNT"],
+                    row["LEDGER_ACCOUNT_NAME"],
+                    row["CHARACTERISTIC"],
+                    row["START_DATE"],
+                    row["END_DATE"],
+                ),
+            )
+
+        conn.commit()
+        df_len = len(df)
+        print(f"Загружено {df_len} записей в таблицу ds.md_ledger_account_s.")
+        return df_len
+
+    except Exception as e:
+        conn.rollback()
+        end_log(
+            log_id,
+            0,
+            f"Ошибка загрузки таблицы md_ledger_account_s: {str(e)}",
+        )
+        raise e
+
+
 def run_etl():
     try:
-        # логируем начало etl процесса
+        # логируем начало etl
         log_id = start_log()
 
         records_count = 0
 
         # выполнение функций и подсчет кол-ва записей
-        # records_count += load_ft_balance_f(
-        #     f"{files_path}ft_balance_f.csv", log_id
-        # )
-        # records_count += load_ft_posting_f(
-        #     f"{files_path}ft_posting_f.csv", log_id
-        # )
-        # records_count += load_md_account_d(
-        #     f"{files_path}md_account_d.csv", log_id
-        # )
+        records_count += load_ft_balance_f(
+            f"{files_path}ft_balance_f.csv", log_id
+        )
+        records_count += load_ft_posting_f(
+            f"{files_path}ft_posting_f.csv", log_id
+        )
+        records_count += load_md_account_d(
+            f"{files_path}md_account_d.csv", log_id
+        )
         records_count += load_md_currency_d(
             f"{files_path}md_currency_d.csv", log_id
         )
-        # records_count += load_ft_balance_f(
-        #     f"{files_path}ft_balance_f.csv", log_id
-        # )
-        # records_count += load_ft_balance_f(
-        #     f"{files_path}ft_balance_f.csv", log_id
-        # )
+        records_count += load_md_exchange_rate_d(
+            f"{files_path}md_exchange_rate_d.csv", log_id
+        )
+        records_count += load_md_ledger_account_s(
+            f"{files_path}md_ledger_account_s.csv", log_id
+        )
 
+        # логируем конец etl
         end_log(log_id, records_count)
 
     except Exception as e:
