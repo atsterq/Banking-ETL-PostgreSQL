@@ -76,16 +76,11 @@ def load_ft_balance_f(csv_file, log_id):
         df = pd.read_csv(csv_file, delimiter=";")
 
         # проверить наличие пропусков в обязательных столбцах
-        df = df.dropna(subset=["ON_DATE", "ACCOUNT_RK", "BALANCE_OUT"])
+        # df = df.dropna(subset=["ON_DATE", "ACCOUNT_RK", "BALANCE_OUT"])
 
-        # преобразуем типы данных
+        # преобразуем дату
         df["ON_DATE"] = pd.to_datetime(df["ON_DATE"], format="%d.%m.%Y")
-        df["ACCOUNT_RK"] = df["ACCOUNT_RK"].astype(int)
-        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
-        df["BALANCE_OUT"] = df["BALANCE_OUT"].astype(float)
 
-        # sql, для корректного обновления данных при вставке в уникальные
-        # строки обновляем данные (excluded)
         insert_query = """
             INSERT INTO ds.ft_balance_f (on_date, account_rk, currency_rk, balance_out)
             VALUES (%s, %s, %s, %s)
@@ -120,7 +115,6 @@ def load_ft_balance_f(csv_file, log_id):
 
 
 def load_ft_posting_f(csv_file, log_id):
-    # функция загрузки таблицы ft_posting_f
     try:
         # очищаем таблицу
         cur.execute("TRUNCATE TABLE ds.ft_posting_f;")
@@ -129,21 +123,6 @@ def load_ft_posting_f(csv_file, log_id):
         df = pd.read_csv(csv_file, delimiter=";")
 
         df["OPER_DATE"] = pd.to_datetime(df["OPER_DATE"], format="%d-%m-%Y")
-
-        df = df.dropna(
-            subset=[
-                "OPER_DATE",
-                "CREDIT_ACCOUNT_RK",
-                "DEBET_ACCOUNT_RK",
-                "CREDIT_AMOUNT",
-                "DEBET_AMOUNT",
-            ]
-        )
-
-        df["CREDIT_ACCOUNT_RK"] = df["CREDIT_ACCOUNT_RK"].astype(int)
-        df["DEBET_ACCOUNT_RK"] = df["DEBET_ACCOUNT_RK"].astype(int)
-        df["CREDIT_AMOUNT"] = df["CREDIT_AMOUNT"].astype(float)
-        df["DEBET_AMOUNT"] = df["DEBET_AMOUNT"].astype(float)
 
         insert_query = """
             INSERT INTO ds.ft_posting_f (oper_date, credit_account_rk, 
@@ -188,13 +167,6 @@ def load_md_account_d(csv_file, log_id):
         df["DATA_ACTUAL_END_DATE"] = pd.to_datetime(
             df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
         )
-
-        df = df.dropna(
-            subset=["DATA_ACTUAL_DATE", "ACCOUNT_RK", "CURRENCY_RK"]
-        )
-
-        df["ACCOUNT_RK"] = df["ACCOUNT_RK"].astype(int)
-        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
 
         insert_query = """
             INSERT INTO ds.md_account_d (data_actual_date, 
@@ -259,8 +231,6 @@ def load_md_currency_d(csv_file, log_id):
             df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
         )
 
-        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
-
         # обрежем до 3 символов, как этого требует ограничение таблицы
         df["CURRENCY_CODE"] = df["CURRENCY_CODE"].str[:3]
         df["CODE_ISO_CHAR"] = df["CODE_ISO_CHAR"].str[:3]
@@ -303,7 +273,11 @@ def load_md_currency_d(csv_file, log_id):
 
 def load_md_exchange_rate_d(csv_file, log_id):
     try:
-        df = pd.read_csv(csv_file, delimiter=";")
+        df = pd.read_csv(
+            csv_file,
+            delimiter=";",
+            dtype={"CODE_ISO_NUM": str},
+        )
 
         df["DATA_ACTUAL_DATE"] = pd.to_datetime(
             df["DATA_ACTUAL_DATE"], format="%Y-%m-%d"
@@ -311,18 +285,6 @@ def load_md_exchange_rate_d(csv_file, log_id):
         df["DATA_ACTUAL_END_DATE"] = pd.to_datetime(
             df["DATA_ACTUAL_END_DATE"], format="%Y-%m-%d"
         )
-
-        df = df.dropna(
-            subset=["DATA_ACTUAL_DATE", "CURRENCY_RK", "REDUCED_COURCE"]
-        )
-
-        df["CURRENCY_RK"] = df["CURRENCY_RK"].astype(int)
-
-        df["REDUCED_COURCE"] = df["REDUCED_COURCE"].astype(float)
-
-        df["CODE_ISO_NUM"] = df["CODE_ISO_NUM"].astype(str).str.zfill(3)
-
-        df["CODE_ISO_NUM"] = df["CODE_ISO_NUM"].str[:3]
 
         insert_query = """
             INSERT INTO ds.md_exchange_rate_d (data_actual_date, 
@@ -373,7 +335,6 @@ def load_md_ledger_account_s(csv_file, log_id):
             df["END_DATE"], format="%Y-%m-%d", errors="coerce"
         )
 
-        df = df.dropna(subset=["START_DATE", "LEDGER_ACCOUNT"])
 
         insert_query = """
             INSERT INTO ds.md_ledger_account_s (chapter, chapter_name,
