@@ -1,18 +1,13 @@
 # Showcase
-На данный момент ничего не готово.  
 Ссылка на видеопоказ: https://disk.yandex.ru/d/pLCTm5upGyvuGA
 # Description
 ETL-процесс для загрузки банковских данных из CSV-файлов в PostgreSQL
+# Get started
+- use etl_pipeline.py
 # Technology
 - Реляционная СУБД: PostgreSQL 13+;
 - Среда разработки:  DBeaver, VSCode;
-- Python 3.10, Java 8;
+- Python 3.10;
 - Ubuntu 19+;
-- PySpark;
 - Docker;
-- Airflow 2 (опционально);
-- Jupyter notebook (опционально);
-- Talend x (опционально);
-- Virtual Box (опционально);
-# Get started
-- use pipeline.py
+
