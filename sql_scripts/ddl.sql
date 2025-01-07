@@ -1,8 +1,6 @@
+-- 1
 -- создаем слой детальных данных DS
 create schema if not exists ds;
-
--- создаем схему для логов
-create schema if not exists logs;
 
 -- создаем таблицы для DS
 -- создаем таблицу для DS.FT_BALANCE_F
@@ -88,6 +86,10 @@ create table if not exists ds.md_ledger_account_s (
     primary key (ledger_account, start_date) 
 );
 
+
+-- создаем схему для логов
+create schema if not exists logs;
+
 -- создаем таблицу для хранения логов
 create table if not exists logs.logs (
     log_id serial primary key,  
@@ -96,4 +98,63 @@ create table if not exists logs.logs (
     records_count integer, 
     status varchar(50), 
     error_message text  
+);
+
+
+-- 2
+-- создаем схему для data mart
+create schema if not exists dm;
+
+-- создаем таблицу dm_account_turnover_f
+create table if not exists dm.dm_account_turnover_f (
+    on_date date not null,  
+    account_rk integer not null,  
+    credit_amount numeric(23, 8),  
+    credit_amount_rub numeric(23, 8),  
+    debet_amount numeric(23, 8),  
+    debet_amount_rub numeric(23, 8),  
+    primary key (on_date, account_rk)
+);
+
+-- cоздаем таблицу dm_account_balance_f
+create table if not exists dm.dm_account_balance_f (
+    on_date date not null,  
+    account_rk integer not null,  
+    balance_out numeric(23, 8),  
+    balance_out_rub numeric(23, 8),  
+    primary key (on_date, account_rk)
+);
+
+
+-- 3
+-- cоздаем таблицу dm_f101_round_f
+create table if not exists dm.dm_f101_round_f (
+    from_date date,  
+    to_date date,  
+    chapter char(1),  
+    ledger_account char(5),  
+    characteristic char(1),
+    balance_in_rub numeric(23, 8),  
+    r_balance_in_rub numeric(23, 8),  
+    balance_in_val numeric(23, 8),  
+    r_balance_in_val numeric(23, 8),  
+    balance_in_total numeric(23, 8),  
+    r_balance_in_total numeric(23, 8),  
+    turn_deb_rub numeric(23, 8),  
+    r_turn_deb_rub numeric(23, 8),  
+    turn_deb_val numeric(23, 8),  
+    r_turn_deb_val numeric(23, 8),  
+    turn_deb_total numeric(23, 8),  
+    r_turn_deb_total numeric(23, 8),  
+    turn_cre_rub numeric(23, 8),  
+    r_turn_cre_rub numeric(23, 8),  
+    turn_cre_val numeric(23, 8),  
+    r_turn_cre_val numeric(23, 8),  
+    turn_cre_total numeric(23, 8),  
+    r_turn_cre_total numeric(23, 8),  
+    balance_out_rub numeric(23, 8),  
+    r_balance_out_rub numeric(23, 8),  
+    balance_out_val numeric(23, 8),  
+    r_balance_out_val numeric(23, 8),  
+    balance_out_total numeric(23, 8)
 );
