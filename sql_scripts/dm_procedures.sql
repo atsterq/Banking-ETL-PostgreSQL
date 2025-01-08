@@ -43,10 +43,29 @@ begin
 
         -- вставляем данные в витрину оборотов
         insert into dm.dm_account_turnover_f (
-            on_date, account_rk, credit_amount, credit_amount_rub, debet_amount, debet_amount_rub
+            on_date, account_rk, credit_amount, 
+			credit_amount_rub, debet_amount, debet_amount_rub
         ) values (
-            i_ondate, record.account_rk, a_credit_amount, a_credit_amount_rub, a_debet_amount, a_debet_amount_rub
+            i_ondate, record.account_rk, a_credit_amount, 
+			a_credit_amount_rub, a_debet_amount, a_debet_amount_rub
         );
+    end loop;
+end;
+$$;
+
+
+-- заполняем в цикле dm.dm_account_turnover_f
+do $$
+declare
+    v_date date := '2018-01-01';
+begin
+    -- Запускаем процедуру для оборотов по каждому дню января 2018 года
+    while v_date <= '2018-01-31' loop
+        -- Запуск процедуры для оборотов
+        call ds.fill_account_turnover_f(v_date);
+
+        -- Переход к следующему дню
+        v_date := v_date + interval '1 day';
     end loop;
 end;
 $$;
@@ -87,8 +106,8 @@ begin
 end;
 $$;
 
-select coalesce(reduced_cource, 1)
-        from ds.md_exchange_rate_d
-		where '2017-12-31' between data_actual_date and data_actual_end_date;
+--select coalesce(reduced_cource, 1)
+--        from ds.md_exchange_rate_d
+--		where '2017-12-31' between data_actual_date and data_actual_end_date;
 		
 call ds.fill_balance_31_12_2017();
