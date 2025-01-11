@@ -40,8 +40,6 @@ end;
 $$
 
 
--- 1.2
-
 -- процедура заполнения витрины оборотов по лицевым счетам
 create or replace procedure ds.fill_account_turnover_f(i_ondate date)
 language plpgsql
@@ -138,10 +136,9 @@ end;
 $$;
 
 
--- проверка за один день
-call ds.fill_account_turnover_f('2018-01-09');
-
+-- удалим записи
 truncate dm.dm_account_turnover_f ;
+
 
 -- заполнение dm.dm_account_turnover_f за период 2018-01
 do $$
@@ -159,14 +156,19 @@ end;
 $$;
 
 
-select * from dm.dm_account_turnover_f as datf limit 100;
-select count(1) from dm.dm_account_turnover_f as datf ;
+-- проверка
+select * from dm.dm_account_turnover_f as datf;
+select * from logs.logs order by log_id desc ;
 
 
 -----------------------------------
 -- Так как остатки за день считаются на основе остатков за предыдущий день, 
 -- вам необходимо заполнить витрину DM.DM_ACCOUNT_BALANCE_F за 31.12.2017 данными из DS.FT_BALANCE_F.
+
+-- для начала удалим записи
 truncate dm.dm_account_balance_f ;
+
+
 -- Заполним баланс за 31.12.2017
 insert into dm.dm_account_balance_f (
 	on_date, account_rk, balance_out, balance_out_rub)
@@ -273,11 +275,6 @@ end;
 $$;
 
 
--- проверка за один день
-call ds.fill_account_balance_f('2018-01-01');
-select * from dm.dm_account_balance_f as dabf where on_date = '2018-01-01' limit 100;
-
-
 -- заполнение dm.fill_account_balance_f за период 2018-01
 do $$
 declare
@@ -291,3 +288,8 @@ begin
     end loop;
 end;
 $$;
+
+
+-- проверка
+select * from dm.dm_account_balance_f as dabf;
+select * from logs.logs order by log_id desc ;
