@@ -1,9 +1,54 @@
+-- refactor
+alter table logs.logs 
+add column table_name varchar(50),
+add column method varchar(50);
+
+alter table logs.logs 
+rename column error_message to message;
+
+
+-- logger
+create or replace procedure logs.logger(
+	a_start_time timestamp,
+	a_records_count int4,
+	a_status varchar(50),
+	a_message text,
+	a_table_name varchar(50))
+language plpgsql
+as $$
+declare
+	a_end_time timestamp := clock_timestamp();
+	a_method varchar(50) := 'sql procedure';
+begin
+	insert into logs.logs(
+		start_time,
+		end_time,
+		records_count,
+		status,
+		message,
+		table_name,
+		method)
+	values(
+		a_start_time,
+		a_end_time,
+		a_records_count,
+		a_status,
+		a_message,
+		a_table_name,
+		a_method);
+end;
+$$
+
+
 -- 1.2
 
 -- процедура заполнения витрины оборотов по лицевым счетам
 create or replace procedure ds.fill_account_turnover_f(i_ondate date)
 language plpgsql
 as $$
+declare
+	a_start_time timestamp := clock_timestamp();
+	a_records_count int4 := 0;
 begin
     -- удалить старые данные
     delete from dm.dm_account_turnover_f where on_date = i_ondate;
@@ -71,6 +116,24 @@ begin
 		on credit_t.account_rk = debet_t.account_rk)
 		as balance_t
 	on merd.currency_rk = balance_t.currency_rk;
+
+	-- логирование
+	select count(1) into a_records_count from dm.dm_account_turnover_f where on_date = i_ondate;
+
+	call logs.logger(
+		a_start_time,
+		a_records_count,
+		'success',
+		format('Процедура ds.fill_account_turnover_f с аргументом %s выполнена успешно', i_ondate),
+		'dm.dm_account_turnover_f');
+
+	exception when others then
+		call logs.logger(
+			a_start_time,
+			a_records_count,
+			'error',
+			sqlerrm,
+			'dm.dm_account_turnover_f');
 end;
 $$;
 
@@ -78,17 +141,19 @@ $$;
 -- проверка за один день
 call ds.fill_account_turnover_f('2018-01-09');
 
+truncate dm.dm_account_turnover_f ;
 
 -- заполнение dm.dm_account_turnover_f за период 2018-01
 do $$
 declare
     i_ondate date := '2018-01-01';
+	v_cnt int;
 begin
     -- цикл
     while i_ondate <= '2018-01-31' loop
         call ds.fill_account_turnover_f(i_ondate);
 
-        i_ondate := i_ondate + interval '1 day';
+		i_ondate := i_ondate + interval '1 day';
     end loop;
 end;
 $$;
@@ -120,6 +185,9 @@ left join
 create or replace procedure ds.fill_account_balance_f(i_ondate date)
 language plpgsql
 as $$
+declare
+	a_start_time timestamp := clock_timestamp();
+	a_records_count int4 := 0;
 begin
     -- удалить старые данные
     delete from dm.dm_account_balance_f where on_date = i_ondate;
@@ -157,17 +225,17 @@ begin
 	on mad.currency_rk = actual_exch_t.currency_rk
 	where i_ondate between mad.data_actual_date and mad.data_actual_end_date-- 112 действующих акков
 	)
-	select -- выборка для вставки
+	select -- финальная выборка для вставки
 		balance_out_t.on_date
 		, balance_out_t.account_rk
 		, balance_out_t.balance_out
 		, balance_out_t.balance_out * balance_out_t.actual_cource as balance_out_rub
-	from (
+	from ( -- делаем расчеты по формуле
 	select 
 		i_ondate as on_date 
 		, balance_t.account_rk
 		, balance_t.actual_cource
-		, case -- расчеты по формуле
+		, case 
 			when balance_t.char_type = 'А' then 
 				coalesce(balance_t.prev_balance_out, 0) 
 				+ coalesce(datf.debet_amount, 0) 
@@ -183,6 +251,24 @@ begin
 		dm.dm_account_turnover_f as datf 
 	on balance_t.account_rk = datf.account_rk and datf.on_date = i_ondate
 	) as balance_out_t;
+
+	-- логирование
+	select count(1) into a_records_count from dm.dm_account_balance_f where on_date = i_ondate;
+
+	call logs.logger(
+		a_start_time,
+		a_records_count,
+		'success',
+		format('Процедура ds.fill_account_balance_f с аргументом %s выполнена успешно', i_ondate),
+		'ds.fill_account_balance_f');
+
+	exception when others then
+		call logs.logger(
+			a_start_time,
+			a_records_count,
+			'error',
+			sqlerrm,
+			'dm.dm_account_turnover_f');
 end;
 $$;
 
@@ -205,7 +291,3 @@ begin
     end loop;
 end;
 $$;
-
-
--- проверка
-select count(1) from dm.dm_account_balance_f ;
