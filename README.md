@@ -5,11 +5,12 @@
 
 Недавно банку потребовалось построить отчёт по 101 форме. Те данные что остались в csv-файлах тоже нужны. Загрузить их в новую БД не получиться из-за архитектурных и управленческих сложностей, нужно рассчитать витрину отдельно. Но для этого сначала нужно загрузить исходные данные из csv-файлов в детальный слой (DS) хранилища в СУБД PostgreSQL.
 # Showcase
-- [1.1 etl_pipeline](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_1.mkv)
-- [1.2 sql procedures](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_2.mkv)
+- [1.1 etl_pipeline](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_1.mkv)(/etl_pipeline.py)
+- [1.2 sql procedures for calculating the turnover and balance marts](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_2.mkv)(/sql_scripts/acc_turnover_balance.sql)
+- [1.3 sql procedure for calculating 101 form]()(/sql_scripts/f101_round.sql)
 # Technology
-- Реляционная СУБД: PostgreSQL 13+;
-- Среда разработки:  DBeaver, VSCode;
+- PostgreSQL 13+;
+- DBeaver, VSCode;
 - Python 3.10;
 - Ubuntu 19+;
 - Docker;
