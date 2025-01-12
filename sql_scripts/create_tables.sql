@@ -133,7 +133,7 @@ create table if not exists dm.dm_f101_round_f (
     to_date date,  
     chapter char(1),  
     ledger_account char(5),  
-    characteristic char(1),
+    characteristic char(1), 
     balance_in_rub numeric(23, 8),  
     r_balance_in_rub numeric(23, 8),  
     balance_in_val numeric(23, 8),  
