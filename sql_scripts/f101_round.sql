@@ -1,28 +1,3 @@
---Отчетная дата – это первый день месяца, следующего за отчетным. 
---То есть, если мы хотим рассчитать отчет за январь 2018 года, то должны передать в процедуру 1 февраля 2018 года.
---target_date = i_ondate - interval '1 month'
--- В отчет должна попасть информация по всем счетам, действующим в отчетном периоде, 
---группировка в отчете идет по балансовым счетам второго порядка
--- group by [:5] счета (DS.MD_ACCOUNT_D.account_number)
---i_ondate - interval '1 month'
---	a_to_date date := i_ondate - interval '1 day'
-
-select -- таблица счетов
-	mlas.chapter 
-	, mlas.ledger_account
-	, mad.char_type as characteristic
---	, mad.currency_code 
---	, mad.account_rk 
-	, '2018-02-01'::date - interval '1 month' as from_date -- '2018-02-01' заменить на i_ondate
-	, '2018-02-01'::date - interval '1 day' as to_date
-from
-	ds.md_ledger_account_s as mlas 
-join
-	ds.md_account_d as mad 
-	on mlas.ledger_account = left(mad.account_number, 5)::int -- берем счета второго порядка, т.е. первые 5 символов
-;
-
-
 --процедура расчета 101 формы информации об остатках и оборотах за отчетный период
 create or replace procedure  dm.fill_f101_round_f(i_ondate date) -- i_ondate - первый день месяца, следующего за отчетным.
 language plpgsql
@@ -30,8 +5,8 @@ as $$
 declare
 	a_start_time timestamp := clock_timestamp();
 	a_records_count int4 := 0;
-	a_from_date date := i_ondate - interval '1 month'
-	a_to_date date := i_ondate - interval '1 day'
+	a_from_date date := i_ondate - interval '1 month' -- начало периода расчета
+	a_to_date date := i_ondate - interval '1 day' -- конец периода
 begin
     -- удалить старые данные чтобы можно было перезапускать процедуру
     delete from dm.dm_f101_round_f where from_date = a_from_date and to_date = a_to_date;
@@ -57,9 +32,59 @@ begin
 	    balance_out_total numeric(23, 8)
 	);
 
-
 	-- расчёт данных
-    
+    with acc_t as (
+		select -- таблица счетов
+			mlas.chapter -- глава из справочника балансовых счетов
+			, mlas.ledger_account -- балансовый счет второго порядка
+			, mad.char_type as characteristic -- характеристика счета
+		--	, mad.currency_code 
+			, mad.account_rk 
+		--	, '2018-02-01'::date - interval '1 month' as from_date -- '2018-02-01' заменить на i_ondate
+		--	, '2018-02-01'::date - interval '1 day' as to_date
+		from
+			ds.md_ledger_account_s as mlas 
+		join
+			ds.md_account_d as mad 
+			on mlas.ledger_account = left(mad.account_number, 5)::int -- берем счета второго порядка, т.е. первые 5 символов
+		),
+		balance_t as (
+		select -- таблица всех балансов на начало и конец периода
+			dabf.account_rk 
+			, dabf.balance_out_rub  as balance_in_total -- сумма остатков в рублях на начало
+			, dabf2.balance_out_rub  as balance_out_total -- сумма остатков в рублях на конец
+			, mad.currency_code -- для определения типа счета (рублевый или нет)
+		from 
+			dm.dm_account_balance_f as dabf
+		join
+			dm.dm_account_balance_f as dabf2
+			on dabf.account_rk = dabf2.account_rk 
+		join
+			ds.md_account_d as mad 
+			on dabf.account_rk = mad.account_rk 
+		where 
+			dabf.on_date = '2018-02-01'::date - interval '1 month' - interval '1 day' -- на день предшествующий первому дню
+			and dabf2.on_date = '2018-02-01'::date - interval '1 day' -- последний день расчета
+		),
+		turn_t as (
+		select -- таблица оборотов за период
+			datf.account_rk 
+			, sum(datf.debet_amount_rub) filter (where mad.currency_code in ('810', '643')) as turn_deb_rub
+			, sum(datf.debet_amount_rub) filter (where mad.currency_code not in ('810', '643')) as turn_deb_val
+			, sum(datf.debet_amount_rub) as turn_deb_total
+			, sum(datf.credit_amount_rub) filter (where mad.currency_code in ('810', '643')) as turn_cre_rub
+			, sum(datf.credit_amount_rub) filter (where mad.currency_code not in ('810', '643')) as turn_cre_val
+			, sum(datf.credit_amount_rub) as turn_cre_total
+		from 
+			dm.dm_account_turnover_f as datf 
+		join
+			ds.md_account_d as mad 
+			on datf.account_rk = mad.account_rk 
+		where 
+			datf.on_date between '2018-02-01'::date - interval '1 month' 
+			and '2018-02-01'::date - interval '1 day' -- интервал между первым и последним днем рачетов
+		group by datf.account_rk
+		)
 
 	-- логирование
 	select count(1) into a_records_count from dm.dm_f101_round_f where on_date = i_ondate;
