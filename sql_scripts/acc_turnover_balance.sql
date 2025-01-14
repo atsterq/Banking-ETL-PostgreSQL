@@ -292,7 +292,3 @@ $$;
 -- проверка
 select * from dm.dm_account_balance_f as dabf;
 select * from logs.logs order by log_id desc ;
-
-
------------
--- расчет 101 формы 
