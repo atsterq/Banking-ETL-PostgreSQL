@@ -1,3 +1,4 @@
+truncate dm.dm_f101_round_f ;
 --процедура расчета 101 формы информации об остатках и оборотах за отчетный период
 create or replace procedure  dm.fill_f101_round_f(i_ondate date) -- i_ondate - первый день месяца, следующего за отчетным.
 language plpgsql
@@ -43,7 +44,8 @@ begin
 			ds.md_ledger_account_s as mlas 
 		join
 			ds.md_account_d as mad 
-			on mlas.ledger_account = left(mad.account_number, 5)::int -- берем счета второго порядка, т.е. первые 5 символов
+			on mlas.ledger_account = left(mad.account_number, 5)::int 
+			-- берем счета второго порядка, т.е. первые 5 символов
 		),
 		balance_t as (
 		select -- таблица всех балансов (остатки на начало и конец периода)
@@ -64,7 +66,7 @@ begin
 			and dabf2.on_date = a_to_date -- последний день расчета
 		),
 		turn_t as (
-		select -- таблица оборотов за период
+		select -- таблица оборотов за период (суммируем обороты по каждому счету в периоде)
 			datf.account_rk 
 			, sum(datf.debet_amount_rub) filter (where mad.currency_code in ('810', '643')) as turn_deb_rub
 			, sum(datf.debet_amount_rub) filter (where mad.currency_code not in ('810', '643')) as turn_deb_val

@@ -135,7 +135,7 @@ create table if not exists dm.dm_f101_round_f (
     ledger_account char(5),  
     characteristic char(1), 
     balance_in_rub numeric(23, 8),  
-    r_balance_in_rub numeric(23, 8),  
+    r_balance_in_rub numeric(23, 8),  -- заполнение колонок с приставкой r_ не описано в задании
     balance_in_val numeric(23, 8),  
     r_balance_in_val numeric(23, 8),  
     balance_in_total numeric(23, 8),  

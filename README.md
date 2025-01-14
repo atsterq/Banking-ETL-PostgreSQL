@@ -12,7 +12,7 @@
 # Showcase
 - [1.1 python скрипт для загрузки и обработки данных в DS слой](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_1.mkv)(/etl_pipeline.py);
 - [1.2 sql процедуры для расчета витрин оборотов и остатков в DM слое](https://disk.yandex.ru/d/pLCTm5upGyvuGA/project_work_1_2.mkv)(/sql_scripts/acc_turnover_balance.sql);
-- [1.3 sql процедура для расчета 101 формы в DM слое]()(/sql_scripts/f101_round.sql);
+- [1.3 sql процедура для расчета 101 формы в DM слое](https://disk.yandex.ru/client/disk/neoflex?idApp=client&dialog=slider&idDialog=%2Fdisk%2Fneoflex%2Fproject_work_1_3.mkv)(/sql_scripts/f101_round.sql);
 - [1.4]();
 # Technology
 - PostgreSQL 13+;
