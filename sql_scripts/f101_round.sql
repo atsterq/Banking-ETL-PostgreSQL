@@ -85,6 +85,34 @@ begin
 			and '2018-02-01'::date - interval '1 day' -- интервал между первым и последним днем рачетов
 		group by datf.account_rk
 		)
+select 
+	acc_t.chapter
+	, acc_t.ledger_account
+	, acc_t.characteristic
+	, sum(balance_t.balance_in_total) filter (where balance_t.currency_code in ('810', '643')) as balance_in_rub
+	, sum(balance_t.balance_in_total) filter (where balance_t.currency_code not in ('810', '643')) as balance_in_val
+	, sum(balance_t.balance_in_total) as balance_in_total
+	, sum(turn_t.turn_deb_rub) as turn_deb_rub
+	, sum(turn_t.turn_deb_val) as turn_deb_val
+	, sum(turn_t.turn_deb_total) as turn_deb_total
+	, sum(turn_t.turn_cre_rub) as turn_cre_rub
+	, sum(turn_t.turn_cre_val) as turn_cre_val
+	, sum(turn_t.turn_cre_total) as turn_cre_total
+	, sum(balance_t.balance_out_total) filter (where balance_t.currency_code in ('810', '643')) as balance_out_rub
+	, sum(balance_t.balance_out_total) filter (where balance_t.currency_code not in ('810', '643')) as balance_out_val
+	, sum(balance_t.balance_out_total) as balance_out_total
+from 
+	acc_t
+left join 
+	balance_t
+	on acc_t.account_rk = balance_t.account_rk
+left join
+	turn_t
+	on acc_t.account_rk = turn_t.account_rk
+group by 
+	acc_t.chapter
+	, acc_t.ledger_account
+	, acc_t.characteristic;
 
 	-- логирование
 	select count(1) into a_records_count from dm.dm_f101_round_f where on_date = i_ondate;
