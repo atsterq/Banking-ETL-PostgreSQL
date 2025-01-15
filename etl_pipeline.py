@@ -1,58 +1,24 @@
+import os
 from datetime import datetime
 
 import pandas as pd
+from dotenv import load_dotenv
 
 from utils.connection import close_db, connect_db
+from utils.logging import log
 
-FILES_PATH = "files/"  # путь к таблицам
+load_dotenv()
 
 
-def log(
-    conn,
-    cur,
-    start_time,
-    records_count=None,
-    message=None,
-    table_name=None,
-    method="python script",
-):
-    # функция логирования
-    end_time = datetime.now()
-    status = "success" if not message else "error"
-
-    try:
-        cur.execute(
-            """
-            INSERT INTO logs.logs (start_time, end_time, records_count, status, message, table_name, method)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                start_time,
-                end_time,
-                records_count,
-                status,
-                message,
-                table_name,
-                method,
-            ),
-        )
-        conn.commit()
-
-    except Exception as e:
-        # ошибка в логировании
-        conn.rollback()
-        print(f"Ошибка в логировании: {str(e)}")
+FILES_PATH = os.getenv("FILES_PATH")
 
 
 def load_ft_balance_f(conn, cur, csv_file):
     # функция загрузки таблицы ft_balance_f
     start_time = datetime.now()
     table_name = "ds.ft_balance_f"
-    try:
-        # очищаем таблицу
-        cur.execute("TRUNCATE TABLE ds.ft_balance_f;")
-        conn.commit()
 
+    try:
         df = pd.read_csv(csv_file, delimiter=";")
 
         # преобразуем дату
@@ -78,24 +44,27 @@ def load_ft_balance_f(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)  # кол-во записей
+        status = "success"
         log(
             conn,
             cur,
             start_time,
             records_count,
             table_name=table_name,
-            method="python script",
+            status=status,
         )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
@@ -103,6 +72,7 @@ def load_ft_balance_f(conn, cur, csv_file):
 def load_ft_posting_f(conn, cur, csv_file):
     start_time = datetime.now()
     table_name = "ds.ft_posting_f"
+
     try:
         # очищаем таблицу
         cur.execute("TRUNCATE TABLE ds.ft_posting_f;")
@@ -131,17 +101,27 @@ def load_ft_posting_f(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)
-        log(conn, cur, start_time, records_count, table_name=table_name)
+        status = "success"
+        log(
+            conn,
+            cur,
+            start_time,
+            records_count,
+            table_name=table_name,
+            status=status,
+        )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
@@ -151,10 +131,6 @@ def load_md_account_d(conn, cur, csv_file):
     table_name = "ds.md_account_d"
 
     try:
-        # очищаем таблицу
-        cur.execute("TRUNCATE TABLE ds.md_account_d;")
-        conn.commit()
-
         df = pd.read_csv(csv_file, delimiter=";")
 
         df["DATA_ACTUAL_DATE"] = pd.to_datetime(
@@ -191,17 +167,27 @@ def load_md_account_d(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)
-        log(conn, cur, start_time, records_count, table_name=table_name)
+        status = "success"
+        log(
+            conn,
+            cur,
+            start_time,
+            records_count,
+            table_name=table_name,
+            status=status,
+        )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
@@ -209,11 +195,8 @@ def load_md_account_d(conn, cur, csv_file):
 def load_md_currency_d(conn, cur, csv_file):
     start_time = datetime.now()
     table_name = "ds.md_currency_d"
-    try:
-        # очищаем таблицу
-        cur.execute("TRUNCATE TABLE ds.md_currency_d;")
-        conn.commit()
 
+    try:
         # меняем кодировку, поскольку стандартная utf-8 вызывала ошибку
         df = pd.read_csv(
             csv_file,
@@ -259,17 +242,27 @@ def load_md_currency_d(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)
-        log(conn, cur, start_time, records_count, table_name=table_name)
+        status = "success"
+        log(
+            conn,
+            cur,
+            start_time,
+            records_count,
+            table_name=table_name,
+            status=status,
+        )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
@@ -279,9 +272,6 @@ def load_md_exchange_rate_d(conn, cur, csv_file):
     table_name = "ds.md_exchange_rate_d"
 
     try:
-        # очищаем таблицу
-        cur.execute("TRUNCATE TABLE ds.md_exchange_rate_d;")
-        conn.commit()
 
         df = pd.read_csv(
             csv_file,
@@ -319,17 +309,27 @@ def load_md_exchange_rate_d(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)
-        log(conn, cur, start_time, records_count, table_name=table_name)
+        status = "success"
+        log(
+            conn,
+            cur,
+            start_time,
+            records_count,
+            table_name=table_name,
+            status=status,
+        )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
@@ -339,9 +339,6 @@ def load_md_ledger_account_s(conn, cur, csv_file):
     table_name = "ds.md_ledger_account_s"
 
     try:
-        # очищаем таблицу
-        cur.execute("TRUNCATE TABLE ds.md_ledger_account_s;")
-        conn.commit()
 
         df = pd.read_csv(csv_file, delimiter=";")
 
@@ -390,17 +387,27 @@ def load_md_ledger_account_s(conn, cur, csv_file):
 
         conn.commit()
         records_count = len(df)
-        log(conn, cur, start_time, records_count, table_name=table_name)
+        status = "success"
+        log(
+            conn,
+            cur,
+            start_time,
+            records_count,
+            table_name=table_name,
+            status=status,
+        )
         print(f"Загружено {records_count} записей в таблицу {table_name}.")
 
     except Exception as e:
         conn.rollback()
+        status = "error"
         log(
             conn,
             cur,
             start_time,
             message=f"Ошибка загрузки таблицы {table_name}: {str(e)}",
             table_name=table_name,
+            status=status,
         )
         raise e
 
