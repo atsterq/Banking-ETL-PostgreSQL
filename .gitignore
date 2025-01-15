@@ -51,4 +51,4 @@ dags/*.pyc
 
 # Ignore task_files folder
 task_files/
-files/export/
+files/export/*
