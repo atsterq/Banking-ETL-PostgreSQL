@@ -26,7 +26,8 @@
 Написать скрипт, который позволит выгрузить данные из витрины dm. dm _f101_round_f в csv-файл;
 ## 4. Solution
 - [1.4 python скрипты по выгрузке и загрузке данных из 101 формы(video)](https://disk.yandex.ru/i/37o3xbgL4_lkfA)
-- [python script](export_f101.py | import_f101.py)
+- [python script export](export_f101.py)
+- [python sctipt import](import_f101.py)
 
 # Technology
 - PostgreSQL 13+;
